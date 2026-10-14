@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "seed": "deterministic-v2",
+  "counts": {
+    "train": {
+      "allow": 168,
+      "escalate": 168,
+      "deny": 168
+    },
+    "validation": {
+      "allow": 48,
+      "escalate": 48,
+      "deny": 48
+    },
+    "test": {
+      "allow": 72,
+      "escalate": 72,
+      "deny": 72
+    }
+  },
+  "sha256": {
+    "train": "80de4479496fb8ed7c027d56527bda3e41b1976c4c45ebb3ff86e4762ab3d01a",
+    "validation": "1341f32a5cda91eb2afde87e4584c63cc65d52df69ac2e42affef80b6e584cdd",
+    "test": "cf8c83a00d45a7b564e9cffa143de02d97236e8700b7ebd5fc7f116d18690fef"
+  },
+  "sources": [
+    "https://developers.stellar.org/docs/learn/fundamentals/transactions/operations-and-transactions",
+    "https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations",
+    "https://developers.stellar.org/docs/learn/fundamentals/transactions/signatures-multisig",
+    "https://github.com/Abraham2106/alaia-stellar-proof"
+  ],
+  "raven": "OAuth connected; tools unavailable in generating conversation; not validated by Raven",
+  "limitations": [
+    "Synthetic abstract proposals, not signed XDR or observed transactions",
+    "Checksum-valid identifiers; account existence not checked",
+    "Policy oracle defines ALAIA decisions, not Stellar consensus validity",
+    "Held-out templates; semantic scenarios remain shared across splits",
+    "No SOTA or calibration guarantee; independent review still required"
+  ]
+}

@@ -5,3 +5,6 @@ __pycache__/
 stellar-run*/
 checkpoints/
 *.zip
+data/synthetic-v2/train.json
+data/synthetic-v2/validation.json
+data/synthetic-v2/test.json

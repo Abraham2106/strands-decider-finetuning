@@ -72,6 +72,7 @@ def metrics(records, threshold=0.9):
         fn = sum(confusion[label][p] for p in LABELS if p != label)
         f1.append(2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else 0)
     routed = [(r, route(r["pred"], r["confidence"], policy_allows=True, threshold=threshold)) for r in records]
+    escalation_count = sum(r['gold'] == 'escalate' for r in records)
     return {
         "n": len(records), "confusion": confusion,
         "accuracy": sum(r["gold"] == r["pred"] for r in records) / len(records),
@@ -80,6 +81,8 @@ def metrics(records, threshold=0.9):
         "false_allow_routed": sum(p == "allow" and r["gold"] != "allow" for r, p in routed),
         "judge_calls": sum(p == "escalate" for _, p in routed),
         "coverage": sum(p != "escalate" for _, p in routed) / len(records),
+        "escalation_recall": sum(p == 'escalate' and r['gold'] == 'escalate' for r,p in routed) / escalation_count if escalation_count else None,
+        "missed_escalations": sum(p != 'escalate' and r['gold'] == 'escalate' for r,p in routed),
         "threshold": threshold,
         "routing_note": "Model-only routing; upstream policy decisions are not simulated here.",
     }
@@ -87,7 +90,7 @@ def metrics(records, threshold=0.9):
 
 def self_check(cases):
     parts = split_cases(cases)
-    assert Counter(c["expected"] for c in cases) == {"allow": 24, "deny": 21, "escalate": 6}
+    assert set(Counter(c["expected"] for c in cases)) == set(LABELS)
     assert route("allow", 0.99, policy_allows=False) == "deny"
     assert route("allow", 0.99, policy_allows=None) == "escalate"
     assert route("allow", 0.8, policy_allows=True) == "escalate"
@@ -103,7 +106,25 @@ def self_check(cases):
     return {k: dict(Counter(c["expected"] for c in v)) for k, v in parts.items()}
 
 
-def train(cases, output, epochs):
+def validate_parts(parts):
+    assert set(parts) == {"train", "validation", "test"}
+    seen_ids, seen_states, seen_families, seen_groups = set(), set(), set(), set()
+    for split, rows in parts.items():
+        assert rows and set(c['expected'] for c in rows) == set(LABELS)
+        ids = {c['id'] for c in rows}
+        states = {json.dumps(c['state'], sort_keys=True) for c in rows}
+        families = {c['family'] for c in rows if 'family' in c}
+        groups = {c['counterfactual_group'] for c in rows if 'counterfactual_group' in c}
+        assert len(ids) == len(rows) == len(states)
+        assert not (seen_ids & ids or seen_states & states or seen_families & families or seen_groups & groups)
+        seen_ids.update(ids)
+        seen_states.update(states)
+        seen_families.update(families)
+        seen_groups.update(groups)
+    return {s: dict(Counter(c['expected'] for c in rows)) for s, rows in parts.items()}
+
+
+def train(cases, output, epochs, parts=None):
     import torch
     from huggingface_hub import model_info, snapshot_download
     from strands_decider.modeling import StrandsDeciderModel
@@ -115,7 +136,8 @@ def train(cases, output, epochs):
     torch.manual_seed(42)
     random.seed(42)
     output.mkdir(parents=True, exist_ok=False)
-    parts = split_cases(cases)
+    parts = split_cases(cases) if parts is None else parts
+    split_counts = validate_parts(parts)
     for name, rows in parts.items():
         (output / f"{name}.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     revision = model_info(MODEL).sha
@@ -123,8 +145,8 @@ def train(cases, output, epochs):
     provenance = {"model": MODEL, "revision": revision, "source_repo": "Abraham2106/alaia-stellar-proof",
                   "data_sha256": hashlib.sha256(json.dumps(cases, sort_keys=True).encode()).hexdigest(),
                   "gpu": torch.cuda.get_device_name(0), "torch": torch.__version__,
-                  "epochs": epochs, "split": self_check(cases), "question": QUESTION,
-                  "limitations": ["51 synthetic cases; no SOTA claim", "Repeated templates across splits",
+                  "epochs": epochs, "split": split_counts, "question": QUESTION,
+                  "limitations": ["Synthetic cases; no SOTA claim", "Semantic scenarios may be shared across splits",
                                    "Only disposition trained; not the five-question Verify adapter",
                                    "Confidence threshold fixed at 0.9; no new calibration guarantee"]}
     (output / "provenance.json").write_text(json.dumps(provenance, indent=2), encoding="utf-8")
@@ -194,7 +216,7 @@ def train(cases, output, epochs):
         val = evaluate(parts["validation"])
         m = metrics(val)
         # Select using validation only, prioritising false allows before macro F1.
-        rank = (-m["false_allow_raw"], m["macro_f1"])
+        rank = (-m["false_allow_routed"], -m["missed_escalations"], m["macro_f1"])
         if best is None or rank > best:
             best = rank
             model.save_pretrained(str(output / "checkpoint"))
@@ -216,14 +238,22 @@ def train(cases, output, epochs):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default="data/stellar-cases.json")
+    parser.add_argument("--data-dir", help="Directory containing frozen train/validation/test.json partitions")
     parser.add_argument("--output", default="stellar-run")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    cases = json.loads(Path(args.data).read_text(encoding="utf-8"))
+    parts = None
+    if args.data_dir:
+        parts = {s: json.loads((Path(args.data_dir) / (s + '.json')).read_text(encoding='utf-8')) for s in ('train', 'validation', 'test')}
+        cases = [c for rows in parts.values() for c in rows]
+        validate_parts(parts)
+    else:
+        cases = json.loads(Path(args.data).read_text(encoding="utf-8"))
     if args.check:
-        print(json.dumps(self_check(cases), indent=2))
+        self_check(cases)
+        print(json.dumps(validate_parts(parts) if parts else self_check(cases), indent=2))
     else:
         if not 1 <= args.epochs <= 5:
             raise ValueError("Pilot epochs must be between 1 and 5")
-        train(cases, Path(args.output), args.epochs)
+        train(cases, Path(args.output), args.epochs, parts=parts)

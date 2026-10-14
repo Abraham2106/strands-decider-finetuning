@@ -2,7 +2,30 @@
 
 Piloto de fine-tuning para clasificar propuestas de pago como `allow`, `escalate` o `deny`. El flujo objetivo llama al juez únicamente cuando la clasificación final es `escalate`; las restricciones deterministas del pago siguen siendo una barrera independiente. Este repo prepara el entrenamiento y la evaluación; no firma ni envía transacciones y todavía no está integrado al gateway de ALAIA.
 
-**Estado:** comprobaciones locales aprobadas; entrenamiento GPU pendiente. Molab falló con `Sandbox failed: container exited before health check passed`. No hay pesos ajustados ni métricas de precisión. Los 51 ejemplos sintéticos permiten probar el flujo, no demostrar SOTA.
+**Estado:** el usuario aportó resultados del primer piloto: 8/9 aciertos, 0 aprobaciones incorrectas y un caso que debía escalar pero fue denegado con confianza 0.994. Se verificó la consistencia de esos archivos; ese resultado no demuestra SOTA. El corpus v2 añade 864 casos balanceados y métricas de escalamiento. La nueva versión aún no se entrenó en GPU.
+
+## Corpus ampliado v2
+
+Ejecutar `python generate_synthetic.py`: genera 864 propuestas con 288 ejemplos por clase. Particiones congeladas por familias de formato y grupos contrafactuales: **504 train, 144 validation, 216 test**. El manifiesto versionado fija los hashes de los archivos generados; los JSON se recrean localmente en lugar de duplicarlos en Git.
+
+Incluye ambigüedad de destinatario/monto, intención ausente, múltiples pagos, condiciones sin resolver, instrucciones no confiables, citas benignas de ataques, violaciones de límites, operaciones administrativas, activos no permitidos y grants de agentes. Son propuestas abstractas sintéticas, no pagos reales ni XDR. `oracleFacts` y las etiquetas permanecen fuera de la entrada del modelo.
+
+```bash
+python generate_synthetic.py
+python train_stellar_decider.py --data-dir data/synthetic-v2 --check
+```
+
+Entrenar después de configurar el entorno CUDA documentado abajo:
+
+```bash
+PYTHONPATH="$PWD/upstream-strands:$PWD/upstream-strands/src" python train_stellar_decider.py --data-dir data/synthetic-v2 --output stellar-v2-run-001 --epochs 3
+```
+
+La evaluación añade `escalation_recall` y `missed_escalations`. La selección de época usa validación, priorizando menos aprobaciones incorrectas tras el enrutamiento, luego menos escalaciones omitidas y finalmente macro F1. No se selecciona con prueba.
+
+Raven quedó registrado y la autorización OAuth completó. Sus herramientas no estuvieron disponibles en la conversación de generación: los datos **no están validados por Raven**. Se usó documentación oficial y un oráculo local de reglas. [Detalles y límites](data/synthetic-v2/README.md).
+
+El notebook v1 mantiene su revisión histórica. El notebook `notebooks/stellar_decider_molab_v2.py` carga el generador v2 y el entrenador desde una revisión fija.
 
 ## Archivos
 

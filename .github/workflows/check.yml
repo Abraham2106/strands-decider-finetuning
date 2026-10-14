@@ -6,6 +6,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check syntax
-        run: python3 -m py_compile train_stellar_decider.py notebooks/stellar_decider_molab.py
+        run: python3 -m compileall -q train_stellar_decider.py generate_synthetic.py notebooks
       - name: Check data, metrics and fail-closed routing
         run: python3 train_stellar_decider.py --check
+      - name: Check deterministic generator
+        run: |
+          python3 generate_synthetic.py
+          git diff --exit-code -- data/synthetic-v2
+      - name: Check expanded frozen partitions
+        run: python3 train_stellar_decider.py --data-dir data/synthetic-v2 --check
