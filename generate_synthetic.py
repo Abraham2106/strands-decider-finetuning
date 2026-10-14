@@ -203,7 +203,7 @@ if __name__ == '__main__':
     hashes = {}
     for split, rows in parts.items():
         content = json.dumps(rows, ensure_ascii=False, separators=(',', ':')) + '\n'
-        (out / f'{split}.json').write_text(content, encoding='utf-8')
+        (out / f'{split}.json').write_text(content, encoding='utf-8', newline='\n')
         hashes[split] = hashlib.sha256(content.encode()).hexdigest()
     manifest = {'version': 2, 'seed': 'deterministic-v2', 'counts': {s: dict(Counter(r['expected'] for r in rows)) for s,rows in parts.items()},
                 'sha256': hashes, 'sources': SOURCES, 'raven': 'OAuth connected; tools unavailable in generating conversation; not validated by Raven',
@@ -212,5 +212,5 @@ if __name__ == '__main__':
                                 'Policy oracle defines ALAIA decisions, not Stellar consensus validity',
                                 'Held-out templates; semantic scenarios remain shared across splits',
                                 'No SOTA or calibration guarantee; independent review still required']}
-    (out / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+    (out / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8', newline='\n')
     print(json.dumps(manifest, indent=2))
