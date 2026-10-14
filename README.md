@@ -25,7 +25,7 @@ La evaluación añade `escalation_recall` y `missed_escalations`. La selección 
 
 Raven quedó registrado y la autorización OAuth completó. Sus herramientas no estuvieron disponibles en la conversación de generación: los datos **no están validados por Raven**. Se usó documentación oficial y un oráculo local de reglas. [Detalles y límites](data/synthetic-v2/README.md).
 
-El notebook v1 mantiene su revisión histórica. El notebook `notebooks/stellar_decider_molab_v2.py` carga el generador v2 y el entrenador desde una revisión fija.
+El notebook v1 mantiene su revisión histórica. [Abrir notebook v2 en molab](https://molab.marimo.io/github/Abraham2106/strands-decider-finetuning/blob/main/notebooks/stellar_decider_molab_v2.py): genera las particiones con el código fijado, comprueba sus hashes y conserva el manifiesto en los resultados.
 
 ## Archivos
 
