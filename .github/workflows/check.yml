@@ -1,0 +1,11 @@
+name: CPU checks
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check syntax
+        run: python3 -m py_compile train_stellar_decider.py notebooks/stellar_decider_molab.py
+      - name: Check data, metrics and fail-closed routing
+        run: python3 train_stellar_decider.py --check

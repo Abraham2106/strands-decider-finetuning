@@ -26,7 +26,9 @@ La prueba verifica IDs y estados duplicados, las particiones disjuntas, las mét
 
 Abrir el notebook desde el enlace **Open in molab** de abajo. En molab seleccionar RTX Pro 6000, esperar que conecte el kernel y ejecutar las celdas. Pulsar **Train and compare the pilot**. La comprobación CUDA impide iniciar entrenamiento en CPU. El notebook instala el código oficial fijado, descarga el modelo público, entrena tres épocas y ofrece un ZIP con checkpoint, particiones, historial y reporte. Descargarlo antes de que termine la sesión; los archivos temporales no tienen persistencia garantizada.
 
-El enlace y la revisión del proyecto se fijan al publicar el notebook.
+[Open in molab](https://molab.marimo.io/github/Abraham2106/strands-decider-finetuning/blob/main/notebooks/stellar_decider_molab.py)
+
+El notebook carga entrenador y datos desde `16b3bca513711cd637517a818c5de9a1ed80c046`. Para probar cambios posteriores, actualizar `_project_revision` a un commit que contenga ambos archivos. El notebook anterior importado en molab conserva su código embebido: este enlace abre la versión controlada por GitHub.
 
 ## Entrenar en Linux o WSL2 con NVIDIA
 
@@ -66,4 +68,3 @@ Para aspirar a SOTA faltan datos amplios revisados, separación por plantillas/c
 - [Cómputo y límites de molab](https://docs.marimo.io/guides/molab/).
 
 Este repo no concede una nueva licencia a los datos importados; conserva su procedencia. El código oficial Strands se obtiene por separado bajo su licencia Apache-2.0.
-
