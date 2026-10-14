@@ -103,6 +103,9 @@ def self_check(cases):
     sample = [{"gold": g, "pred": g, "confidence": 0.95} for g in LABELS]
     assert metrics(sample)["macro_f1"] == 1
     assert metrics(sample)["judge_calls"] == 1
+    missed = [{'gold': 'escalate', 'pred': 'deny', 'confidence': 0.994}]
+    assert metrics(missed)['missed_escalations'] == 1
+    assert metrics(missed)['escalation_recall'] == 0
     return {k: dict(Counter(c["expected"] for c in v)) for k, v in parts.items()}
 
 
@@ -142,7 +145,8 @@ def train(cases, output, epochs, parts=None):
         (output / f"{name}.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     revision = model_info(MODEL).sha
     checkpoint = snapshot_download(MODEL, revision=revision)
-    provenance = {"model": MODEL, "revision": revision, "source_repo": "Abraham2106/alaia-stellar-proof",
+    source_repo = 'Abraham2106/strands-decider-finetuning' if all(c.get('synthetic') for c in cases) else 'Abraham2106/alaia-stellar-proof'
+    provenance = {"model": MODEL, "revision": revision, "source_repo": source_repo,
                   "data_sha256": hashlib.sha256(json.dumps(cases, sort_keys=True).encode()).hexdigest(),
                   "gpu": torch.cuda.get_device_name(0), "torch": torch.__version__,
                   "epochs": epochs, "split": split_counts, "question": QUESTION,
@@ -257,3 +261,4 @@ if __name__ == "__main__":
         if not 1 <= args.epochs <= 5:
             raise ValueError("Pilot epochs must be between 1 and 5")
         train(cases, Path(args.output), args.epochs, parts=parts)
+
